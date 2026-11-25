@@ -449,6 +449,18 @@ fn quitting_a_row_targets_its_processes_and_never_system() {
 }
 
 #[test]
+fn a_dev_project_under_usr_local_can_be_quit() {
+    let d = Dir::new("usr-local");
+    let mut e = engine(&d.0);
+    let shop = Owner::Worktree("/usr/local/src/shop".into());
+    e.ingest(T0, scan(T0, 12, Pressure::Normal, &[(shop, 400)]));
+    let row = &e.snapshot().dev[0];
+    assert_eq!(row.path, "/usr/local/src/shop");
+    // Only macOS's own apps are protected, not a checkout that lives there.
+    assert_eq!(e.quit_targets(row.gid).unwrap().procs.len(), 1);
+}
+
+#[test]
 fn a_failed_flush_loses_no_minute_and_no_group() {
     let d = Dir::new("flush-fail");
     let mut e = engine(&d.0);

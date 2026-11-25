@@ -213,7 +213,7 @@ impl Engine {
     /// loginwindow ends the session.
     pub fn quit_targets(&self, gid: Gid) -> Option<Targets> {
         let row = self.snap.dev.iter().chain(self.snap.apps.iter()).find(|r| r.gid == gid);
-        if row.is_some_and(|r| groups::is_system_bundle(&r.path)) {
+        if row.is_some_and(|r| r.kind == RowKind::App && groups::is_system_bundle(&r.path)) {
             return None;
         }
         self.members.targets(gid)
