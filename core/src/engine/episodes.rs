@@ -1,11 +1,12 @@
-//! Pressure episodes: a stretch of orange or red, with one notification each.
+//! Pressure episodes: a stretch of orange or red, stored for the Analyze
+//! prompt with its level and biggest group.
 
 use crate::model::{Episode, Gid, Pressure};
 
 /// An episode that ended this recently before the app (re)started continues
 /// when the colour is still orange or red: a relaunch, or a crash (the store
 /// ends a crashed episode at its last write, up to 5 min before the crash),
-/// doesn't notify again.
+/// doesn't start a new one.
 pub const RESUME_SECS: i64 = 600;
 
 #[derive(Default)]
@@ -25,16 +26,15 @@ impl Episodes {
     }
 
     /// Feeds the displayed colour (and since when it holds). Returns the
-    /// level to notify when an episode starts; escalating from orange to red
-    /// within one episode doesn't notify again, nor does an episode that
-    /// continues the previous run's (see [`RESUME_SECS`]).
+    /// level when a new episode starts; escalating from orange to red stays
+    /// in the same episode, and so does one that continues the previous
+    /// run's (see [`RESUME_SECS`]).
     pub fn update(&mut self, shown: Pressure, since: i64, top_gid: Option<Gid>) -> Option<Pressure> {
         match (&mut self.open, shown) {
             (None, Pressure::Normal) => None,
             (None, level) => {
                 // Same or lower level than the previous run's episode, soon
-                // after it ended: the same episode. Higher: a new one, which
-                // notifies.
+                // after it ended: the same episode. Higher: a new one.
                 if let Some(prev) = self.resume.take()
                     && let Some(end) = prev.end
                     && level <= prev.level
@@ -92,12 +92,12 @@ mod tests {
     use Pressure::*;
 
     #[test]
-    fn one_alert_per_episode_and_its_bounds() {
+    fn one_episode_per_stretch_and_its_bounds() {
         let mut e = Episodes::default();
         assert_eq!(e.update(Normal, 0, Some(1)), None);
         assert_eq!(e.update(Tight, 100, Some(1)), Some(Tight));
         assert_eq!(e.update(Tight, 100, Some(2)), None);
-        assert_eq!(e.update(Critical, 200, Some(3)), None, "escalation doesn't notify");
+        assert_eq!(e.update(Critical, 200, Some(3)), None, "escalation stays in the episode");
         assert_eq!(e.current().unwrap().level, Critical);
         assert_eq!(e.current().unwrap().top_gid, Some(3));
         assert_eq!(e.update(Tight, 300, Some(3)), None);
@@ -129,7 +129,7 @@ mod tests {
     }
 
     #[test]
-    fn a_new_episode_after_a_relaunch_still_alerts() {
+    fn a_new_episode_after_a_relaunch_is_new() {
         // Too long after the previous one ended.
         let mut e = Episodes::resuming(Some(PREV));
         assert_eq!(e.update(Tight, 2000 + RESUME_SECS + 1, None), Some(Tight));

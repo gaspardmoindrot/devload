@@ -7,7 +7,6 @@ import SwiftUI
 @MainActor
 public final class AppController: NSObject, NSPopoverDelegate {
     private let core: LiveCore
-    private let notifier = Notifier()
     private let loginItem = LoginItem()
     /// Outlives each popover: a quit started in one ends in the next.
     private let quits = QuitState(apps: AppQuitter())
@@ -48,7 +47,6 @@ public final class AppController: NSObject, NSPopoverDelegate {
         }
         if result == .ok {
             makeStatusItem()
-            notifier.requestAuthorization()
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                 MainActor.assumeIsolated { self?.checkItemShown() }
             }
@@ -67,8 +65,6 @@ public final class AppController: NSObject, NSPopoverDelegate {
                 statusItem?.button?.image = IconRenderer.image(pressure: pressure, used: used, total: total)
             }
             model?.refresh()
-        case let .alert(pressure, used, total):
-            notifier.post(pressure: pressure, used: used, total: total, biggest: core.snapshot()?.biggest)
         case let .quit(row, quit, denied, left):
             quits.ended(row: row, quit: quit, denied: denied, left: left)
             model?.refresh()

@@ -176,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "devload_core"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "criterion",
  "libc",

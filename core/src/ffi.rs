@@ -37,8 +37,6 @@ pub const DL_ERROR: i32 = 3;
 /// A new sample. Sent when the icon's figure (tenths of a GB) or the
 /// pressure level changed, and on every tick while the popover is open.
 pub const DL_EVENT_TICK: u8 = 1;
-/// A pressure episode started: notify. `pressure` is its level.
-pub const DL_EVENT_ALERT: u8 = 2;
 /// A `dl_quit` ended. `row` is the row id; `quit`, `denied`, `left` count
 /// processes and containers.
 pub const DL_EVENT_QUIT: u8 = 3;
@@ -273,9 +271,6 @@ fn collector_loop(engine: &Mutex<Engine>, stop: &(Mutex<bool>, Condvar), cb: DlC
             if out.recorded && (open || shown != Some(icon)) {
                 shown = Some(icon);
                 f(ctx.0, DlEvent { kind: DL_EVENT_TICK, pressure, used, total, ..Default::default() });
-            }
-            if let Some(level) = out.alert {
-                f(ctx.0, DlEvent { kind: DL_EVENT_ALERT, pressure: level as u8, used, total, ..Default::default() });
             }
         }
         next += tick;

@@ -1,4 +1,4 @@
-//! The engine: turns collector scans into groups, rows, minutes and alerts,
+//! The engine: turns collector scans into groups, rows, minutes and pressure episodes,
 //! keeps the 1 h ring, writes to the store, and answers the UI (snapshot,
 //! graph series, Analyze prompt).
 //!
@@ -123,8 +123,6 @@ pub struct SeriesBufs<'a> {
 pub struct TickOut {
     /// False for the first tick after a sleep (dropped).
     pub recorded: bool,
-    /// An episode started: notify at this level.
-    pub alert: Option<Pressure>,
 }
 
 /// Minute rows read from the database for the graph, kept while the popover
@@ -250,13 +248,13 @@ impl Engine {
         out
     }
 
-    /// Everything after the collector: groups, rows, minutes, alerts, writes.
+    /// Everything after the collector: groups, rows, minutes, episodes, writes.
     pub(crate) fn ingest(&mut self, now: i64, scan: Scan) -> TickOut {
         let slept = self.last_wall.is_some_and(|w| now - w > WAKE_GAP_SECS || now < w);
         self.last_wall = Some(now);
         if slept {
             // CPU and idle counters span the whole sleep: drop this sample.
-            return TickOut { recorded: false, alert: None };
+            return TickOut { recorded: false };
         }
 
         let stacks = self.stacks.as_ref().filter(|(ts, _)| now - ts <= STACKS_MAX_AGE).map(|(_, s)| s.as_slice());
@@ -269,7 +267,7 @@ impl Engine {
         }
 
         let top_gid = agg.rows.iter().max_by_key(|r| r.footprint).map(|r| r.gid);
-        let alert = self.episodes.update(m.pressure, scan.pressure_since, top_gid);
+        self.episodes.update(m.pressure, scan.pressure_since, top_gid);
 
         self.snap = snapshot_of(&scan, agg.rows);
 
@@ -280,7 +278,7 @@ impl Engine {
             self.last_maintenance = now;
             self.maintenance(now);
         }
-        TickOut { recorded: true, alert }
+        TickOut { recorded: true }
     }
 
     /// Hourly upkeep: the database's, then forget cached repo roots (a

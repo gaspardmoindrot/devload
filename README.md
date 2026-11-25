@@ -30,7 +30,6 @@ Activity Monitor lists processes. When you run several worktrees, Claude Code or
 - **Dev projects:** one row per git worktree, with its dev servers, watchers, agent sessions (Claude Code, Codex) and Docker containers summed together.
 - **Apps (outside dev projects):** Chrome, Slack, Docker Desktop and the rest, each app's helpers grouped under it. Nothing is counted twice.
 - **Graph:** memory used over 1 h, 6 h, 24 h or 7 days. Hover to read the time and the exact values.
-- **Alerts:** one notification when pressure turns orange or red, naming the biggest consumer.
 - **Quit:** quit an app, or stop a dev project's processes and Docker containers, from the popover (with a confirmation).
 - **Analyze:** copies a ready-made prompt for Claude Code, Codex or any agent. It points to the local database and asks the agent what used the memory and why.
 - **Light:** one native process, no daemon, no network. See [Performance](#performance).
@@ -85,8 +84,6 @@ Pick one:
 > [!IMPORTANT]
 > Only do this for software you trust. You can check what you run: the zip is built from the tagged source by the public [release workflow](.github/workflows/release.yml), and its SHA-256 is published next to it. If you'd rather not trust a binary at all, [build it yourself](#build-from-source). It takes about two minutes, and a locally built app is never quarantined.
 
-On first launch, macOS asks whether devload may send notifications. They're only used for the pressure alerts.
-
 To start devload at login, turn on **Launch at login** in the **···** menu at the bottom right of the popover.
 
 ### Build from source
@@ -127,7 +124,7 @@ Secrets are removed from process arguments before they go into the database or t
 
 ## How it works
 
-devload is one process: a Rust core (collection, grouping, storage) linked as a static library into a small Swift/AppKit app (menu bar item, popover, graph, notifications).
+devload is one process: a Rust core (collection, grouping, storage) linked as a static library into a small Swift/AppKit app (menu bar item, popover, graph).
 
 Every 5 seconds the core:
 
@@ -148,7 +145,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the details.
 - **Everything stays on your Mac.** devload makes no network connection. There's no telemetry, no analytics, no update check.
 - **What it reads:** process list, memory and CPU figures, each process's executable path, working directory and arguments, and three environment variables that mark agent sessions (`CLAUDE_CODE_SESSION_ID`, `CODEX_SESSION_ID`, `CODEX_THREAD_ID`). It also reads container labels and stats from the local Docker socket, if one exists. It doesn't read any other environment variable or any file content.
 - **What it stores:** `~/Library/Application Support/devload/devload.sqlite`. It keeps one row per minute for 7 days, then hourly rows for 90 days. Process arguments are scrubbed of secrets before they are stored.
-- **Permissions:** notifications, for the pressure alerts. No Accessibility, Full Disk Access or Screen Recording permission.
+- **Permissions:** none. devload sends no notifications and needs no Accessibility, Full Disk Access or Screen Recording permission.
 
 ## Performance
 

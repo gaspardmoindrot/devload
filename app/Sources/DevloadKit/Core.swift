@@ -116,9 +116,6 @@ public struct Snapshot: Equatable, Sendable {
         self.apps = apps
         self.appsMore = appsMore
     }
-
-    /// The heaviest row of both lists: what an alert names.
-    public var biggest: Row? { (dev + apps).max { $0.footprint < $1.footprint } }
 }
 
 public enum Period: UInt8, CaseIterable, Sendable {
@@ -188,8 +185,6 @@ public struct Series: Equatable, Sendable {
 public enum CoreEvent: Equatable, Sendable {
     /// A new sample worth redrawing for (the icon changed, or the popover is open).
     case tick(pressure: Pressure, used: UInt64, total: UInt64)
-    /// A pressure episode started.
-    case alert(pressure: Pressure, used: UInt64, total: UInt64)
     /// A `quit(row:)` ended: processes and containers gone, not ours to
     /// signal, and still alive.
     case quit(row: UInt32, quit: Int, denied: Int, left: Int)
@@ -231,7 +226,6 @@ private let trampoline: DlCallback = { ctx, ev in
     let p = Pressure(raw: ev.pressure)
     switch Int32(ev.kind) {
     case DL_EVENT_TICK: sink.handler(.tick(pressure: p, used: ev.used, total: ev.total))
-    case DL_EVENT_ALERT: sink.handler(.alert(pressure: p, used: ev.used, total: ev.total))
     case DL_EVENT_QUIT:
         sink.handler(.quit(row: ev.row, quit: Int(ev.quit), denied: Int(ev.denied), left: Int(ev.left)))
     default: break

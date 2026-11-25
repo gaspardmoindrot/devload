@@ -9,7 +9,7 @@
 // An episode that ended this recently before the app (re)started continues
 // when the colour is still orange or red: a relaunch, or a crash (the store
 // ends a crashed episode at its last write, up to 5 min before the crash),
-// doesn't notify again.
+// doesn't start a new one.
 #define RESUME_SECS 600
 
 // `dl_start` results.
@@ -27,9 +27,6 @@
 // A new sample. Sent when the icon's figure (tenths of a GB) or the
 // pressure level changed, and on every tick while the popover is open.
 #define DL_EVENT_TICK 1
-
-// A pressure episode started: notify. `pressure` is its level.
-#define DL_EVENT_ALERT 2
 
 // A `dl_quit` ended. `row` is the row id; `quit`, `denied`, `left` count
 // processes and containers.

@@ -84,10 +84,3 @@ private func at(_ s: String) -> Date {
     #expect(Format.axisTop(totalMiB: 36 * 1024) == "36 GB")
 }
 
-@Test func alertText() {
-    let row = Row(name: "feat/checkout-v2", detail: "", footprint: gib * 240 / 100 + 1)
-    let a = Format.alert(pressure: .critical, used: gib * 2250 / 100 + 1, total: 24 * gib, biggest: row)
-    #expect(a.title == "Memory critical")
-    #expect(a.body == "22.50 / 24 GB used. Biggest: feat/checkout-v2 (2.40 GB).")
-    #expect(Format.alert(pressure: .tight, used: gib, total: 24 * gib, biggest: nil).body == "1.00 / 24 GB used.")
-}

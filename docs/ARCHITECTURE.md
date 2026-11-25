@@ -1,6 +1,6 @@
 # Architecture
 
-devload is a single process: a Rust core, built as a static library, linked into a Swift/AppKit app. The core does the measuring, grouping and storing. The app draws the menu bar item, the popover and the graph, and posts notifications.
+devload is a single process: a Rust core, built as a static library, linked into a Swift/AppKit app. The core does the measuring, grouping and storing. The app draws the menu bar item, the popover and the graph.
 
 ```
 ┌──────────────────── Devload.app (one process) ────────────────────┐
@@ -11,7 +11,7 @@ devload is a single process: a Rust core, built as a static library, linked into
 │  NSStatusItem    ◀── callback ───   engine (single-threaded,      │
 │  PopoverView     ── dl_snapshot ─▶          behind a mutex)       │
 │  GraphView       ── dl_series ───▶  docker thread (socket poll)   │
-│  Notifier        ── dl_prompt ───▶  store (SQLite, WAL)           │
+│                  ── dl_prompt ───▶  store (SQLite, WAL)           │
 │                  ── dl_quit ─────▶  quit (SIGTERM / SIGKILL,      │
 │                                           docker stop)            │
 └───────────────────────────────────────────────────────────────────┘
@@ -24,7 +24,7 @@ devload is a single process: a Rust core, built as a static library, linked into
 | `collect/` | One `Collector::tick` every 5 s. Reads machine memory, pressure and CPU (`host_statistics64`, `sysctl`), lists processes (`proc_listallpids`) and reads each one's footprint and CPU time (`proc_pid_rusage`). A process's facts (parent, executable, working directory, arguments, a whitelist of environment variables) are read once, the first time it's seen. It never starts a subprocess. |
 | `collect/classify.rs`, `repo.rs`, `agents.rs` | Puts each process in a group: the git worktree its working directory is in, the Claude Code or Codex session it descends from, or the app responsible for it. |
 | `docker/` | A minimal HTTP client for the Docker Engine socket (Docker Desktop, OrbStack, Colima). Groups containers by `com.docker.compose.project` and reads their memory. It runs on its own thread. |
-| `engine/` | Turns scans into rows (dev projects, apps, system), minute aggregates, pressure episodes and alerts. Keeps the last hour of 5 s ticks in RAM for the 1 h graph. |
+| `engine/` | Turns scans into rows (dev projects, apps, system), minute aggregates, pressure episodes. Keeps the last hour of 5 s ticks in RAM for the 1 h graph. |
 | `store.rs` | SQLite schema, one write per minute, hourly rollup, retention (minutes 7 days, hours 90 days). Every column is commented in the schema, so an agent can read the database on its own. |
 | `series.rs` | Reduces the graph's data to one value per pixel column, so Swift only draws. |
 | `prompt.rs` | Builds the Analyze prompt. |
@@ -44,7 +44,6 @@ Units inside the core: timestamps in Unix seconds, memory in bytes (in RAM) or M
 | `PopoverModel.swift`, `PopoverView.swift` | The popover, in SwiftUI. |
 | `GraphView.swift` | The graph, drawn with AppKit, plus the hover readout. |
 | `IconRenderer.swift` | The menu bar figure and its pressure dot. |
-| `Notifier.swift` | Pressure alerts (one per episode). |
 | `LoginItem.swift` | Launch at login through `SMAppService.mainApp`. |
 
 ## Threads

@@ -174,13 +174,6 @@ public enum Format {
         }
     }
 
-    /// The notification of a pressure episode.
-    public static func alert(pressure: Pressure, used: UInt64, total: UInt64, biggest: Row?) -> (title: String, body: String) {
-        var body = usedOfTotal(used: used, total: total) + " used."
-        if let b = biggest { body += " Biggest: \(b.name) (\(footprint(b.footprint)))." }
-        return (pressureTitle(pressure), body)
-    }
-
     private static func clock(_ date: Date, _ calendar: Calendar) -> String { stamp("HH:mm", date, calendar) }
 
     private static func stamp(_ pattern: String, _ date: Date, _ calendar: Calendar) -> String {

@@ -76,7 +76,7 @@ fn snapshot_sends_every_row_sorted() {
     let mut e = engine(&d.0);
     assert!(!e.snapshot().ready);
     let out = e.ingest(T0, scan(T0, 12, Pressure::Normal, &busy()));
-    assert_eq!(out, TickOut { recorded: true, alert: None });
+    assert_eq!(out, TickOut { recorded: true });
     let s = e.snapshot();
     assert!(s.ready);
     assert_eq!((s.used, s.total, s.cpu_pct), (12 * GIB, TOTAL, 20));
@@ -226,17 +226,17 @@ fn graph_cache_lives_while_the_popover_is_open() {
 }
 
 #[test]
-fn one_alert_per_episode() {
-    let d = Dir::new("alert");
+fn one_episode_per_stretch_of_pressure() {
+    let d = Dir::new("episode");
     let mut e = engine(&d.0);
-    let outs = run(&mut e, T0, T0 + 60, 10, Pressure::Normal);
-    assert!(outs.iter().all(|o| o.alert.is_none()));
-    let outs = run(&mut e, T0 + 60, T0 + 120, 20, Pressure::Tight);
-    assert_eq!(outs[0].alert, Some(Pressure::Tight));
-    assert!(outs[1..].iter().all(|o| o.alert.is_none()));
-    let outs = run(&mut e, T0 + 120, T0 + 180, 23, Pressure::Critical);
-    assert!(outs.iter().all(|o| o.alert.is_none()), "escalation is the same episode");
+    run(&mut e, T0, T0 + 60, 10, Pressure::Normal);
+    assert!(e.episodes.current().is_none());
+    run(&mut e, T0 + 60, T0 + 120, 20, Pressure::Tight);
+    let start = e.episodes.current().unwrap().start;
+    assert_eq!(e.episodes.current().unwrap().level, Pressure::Tight);
+    run(&mut e, T0 + 120, T0 + 180, 23, Pressure::Critical);
     let ep = e.episodes.current().unwrap();
+    assert_eq!(ep.start, start, "escalation is the same episode");
     assert_eq!(ep.level, Pressure::Critical);
     let top = e.reg.get(ep.top_gid.unwrap()).unwrap();
     assert_eq!(top.name, "feat-0", "biggest row: System (3 GB) has no row and is never named");
@@ -372,8 +372,7 @@ fn hourly_maintenance_forgets_cached_repo_roots() {
 fn stop_closes_the_open_episode() {
     let d = Dir::new("stop");
     let mut e = engine(&d.0);
-    let outs = run(&mut e, T0, T0 + 60, 20, Pressure::Tight);
-    assert_eq!(outs[0].alert, Some(Pressure::Tight));
+    run(&mut e, T0, T0 + 60, 20, Pressure::Tight);
     e.stop(T0 + 60);
     let st = Store::open(&d.0).unwrap();
     let eps = st.episodes().unwrap();
@@ -384,7 +383,8 @@ fn stop_closes_the_open_episode() {
     let mut e = engine(&d.0);
     let mut s = scan(later, 20, Pressure::Tight, &busy());
     s.pressure_since = later;
-    assert_eq!(e.ingest(later, s).alert, Some(Pressure::Tight));
+    e.ingest(later, s);
+    assert_eq!(e.episodes.current().unwrap().start, later);
     e.stop(later + 60);
     let eps = st.episodes().unwrap();
     let bounds: Vec<(i64, Option<i64>)> = eps.iter().map(|e| (e.start, e.end)).collect();
@@ -392,21 +392,22 @@ fn stop_closes_the_open_episode() {
 }
 
 #[test]
-fn a_relaunch_while_tight_continues_the_episode_without_an_alert() {
+fn a_relaunch_while_tight_continues_the_episode() {
     let d = Dir::new("relaunch");
     let mut e = engine(&d.0);
-    let outs = run(&mut e, T0, T0 + 60, 23, Pressure::Critical);
-    assert_eq!(outs[0].alert, Some(Pressure::Critical));
+    run(&mut e, T0, T0 + 60, 23, Pressure::Critical);
     e.stop(T0 + 60);
     drop(e);
-    // Relaunched 30 s later, still red then orange: no alert, same episode.
+    // Relaunched 30 s later, still red then orange: the same episode.
     let mut e = engine(&d.0);
     let mut s = scan(T0 + 90, 23, Pressure::Critical, &busy());
     s.pressure_since = T0 + 90;
-    assert_eq!(e.ingest(T0 + 90, s).alert, None);
+    e.ingest(T0 + 90, s);
+    assert_eq!(e.episodes.current().unwrap().start, T0);
     let mut s = scan(T0 + 95, 20, Pressure::Tight, &busy());
     s.pressure_since = T0 + 95;
-    assert_eq!(e.ingest(T0 + 95, s).alert, None);
+    e.ingest(T0 + 95, s);
+    assert_eq!(e.episodes.current().unwrap().start, T0);
     e.stop(T0 + 120);
     let eps = Store::open(&d.0).unwrap().episodes().unwrap();
     let rows: Vec<(i64, Option<i64>, Pressure)> = eps.iter().map(|e| (e.start, e.end, e.level)).collect();
@@ -417,8 +418,7 @@ fn a_relaunch_while_tight_continues_the_episode_without_an_alert() {
 fn a_relaunch_after_a_crash_mid_episode_continues_it() {
     let d = Dir::new("crash");
     let mut e = engine(&d.0);
-    let outs = run(&mut e, T0, T0 + 60, 20, Pressure::Tight);
-    assert_eq!(outs[0].alert, Some(Pressure::Tight));
+    run(&mut e, T0, T0 + 60, 20, Pressure::Tight);
     // Written while open, then the process dies without stop().
     assert!(e.flush_now(T0 + 60, false));
     drop(e);
@@ -426,7 +426,7 @@ fn a_relaunch_after_a_crash_mid_episode_continues_it() {
     let mut e = engine(&d.0);
     let mut s = scan(T0 + 300, 20, Pressure::Tight, &busy());
     s.pressure_since = T0 + 300;
-    assert_eq!(e.ingest(T0 + 300, s).alert, None);
+    e.ingest(T0 + 300, s);
     assert_eq!(e.episodes.current().unwrap().start, T0);
 }
 
