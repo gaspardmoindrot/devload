@@ -151,6 +151,19 @@ private func until(_ done: () -> Bool) async throws {
 }
 
 @MainActor
+@Test func aRowGoneBeforeTheAnswerHasNothingToQuit() {
+    let core = SampleCore()
+    let m = model(core)
+    m.askQuit(4)
+    // Its processes ended while the question was open; no tick since.
+    core.gone = [4]
+    m.confirmQuit()
+    #expect(core.quits.isEmpty)
+    #expect(m.quitting.isEmpty)
+    #expect(m.notes[4] == "Nothing left to quit")
+}
+
+@MainActor
 @Test func anEndForAnotherPopoverIsIgnored() {
     let m = model()
     m.quitEnded(row: 1, quit: 0, denied: 0, left: 3)
@@ -174,6 +187,22 @@ private func until(_ done: () -> Bool) async throws {
     core.elapsed = 5
     m.refresh()
     #expect(m.quitting.isEmpty)
+}
+
+@MainActor
+@Test func anAppThatQuitBeforeForceQuitIsLeftAlone() async throws {
+    let apps = SampleAppQuitter(running: ["/Applications/Slack.app"])
+    apps.stubborn = ["/Applications/Slack.app"]
+    let m = model(apps: apps)
+    m.askQuit(13)
+    m.confirmQuit()
+    try await until { !m.stubborn.isEmpty }
+    // It asked about unsaved work; the user answered, and it quit.
+    apps.stubborn = []
+    _ = apps.quit(path: "/Applications/Slack.app")
+    m.forceQuit(13)
+    #expect(apps.forced.isEmpty)
+    #expect(m.stubborn.isEmpty && m.notes[13] == nil && m.quitting.isEmpty)
 }
 
 @MainActor
