@@ -143,9 +143,9 @@ fn minutes_are_written_every_five_minutes() {
     // Analyze closes the minute in progress and writes it.
     let p = e.prompt(T0 + 310, Period::H1);
     assert_eq!(st.machine_minutes(0, i64::MAX).unwrap().len(), 6);
-    assert!(p.contains(&e.db_path().to_string_lossy().to_string()));
-    assert!(p.contains("/w/p0"), "worktree folders listed");
-    assert!(!p.contains("/Applications/App0.app"), "only worktrees");
+    assert!(p.contains(&e.db_path().to_string_lossy().to_string()), "{p}");
+    assert!(p.contains("over the last hour."), "{p}");
+    assert!(!p.contains("/w/p0") && !p.contains("App0"), "the agent finds the groups itself");
 }
 
 type Bufs = (Vec<f32>, Vec<f32>, Vec<u8>, Vec<f32>, Vec<bool>);

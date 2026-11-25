@@ -12,7 +12,6 @@ pub mod groups;
 pub mod minute;
 pub mod parts;
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use aggregate::{ArgsCache, Row, RowKind, aggregate};
@@ -24,7 +23,7 @@ use parts::{Members, Parts};
 use crate::collect::{Collector, Config, Scan};
 use crate::docker::{Provider, Stack};
 use crate::model::{Gid, GroupKind, MIB, Minute, Pressure};
-use crate::prompt::{self, PromptGroup, PromptInput};
+use crate::prompt;
 use crate::quit::Targets;
 use crate::series::{self, GPoint, MPoint};
 use crate::store::Store;
@@ -59,6 +58,15 @@ impl Period {
             Period::H6 => 6 * 3600,
             Period::H24 => 86400,
             Period::D7 => 7 * 86400,
+        }
+    }
+    /// How the prompt names it: "the last 6 hours".
+    pub fn words(self) -> &'static str {
+        match self {
+            Period::H1 => "hour",
+            Period::H6 => "6 hours",
+            Period::H24 => "24 hours",
+            Period::D7 => "7 days",
         }
     }
     pub fn from_u8(v: u8) -> Option<Self> {
@@ -437,60 +445,13 @@ impl Engine {
         (machine, groups)
     }
 
-    /// The Analyze prompt for `period` ending now. Writes everything first so
-    /// the agent finds it in the database.
+    /// The Analyze prompt for `period`. Writes everything first so the agent
+    /// finds it in the database.
     pub fn prompt(&mut self, now: i64, period: Period) -> String {
         self.flush_now(now, true);
-        let from = now - period.secs();
-        let s = &self.snap;
-        let mut rows: Vec<&Row> = s.dev.iter().chain(&s.apps).collect();
-        rows.sort_by_key(|r| std::cmp::Reverse(r.footprint));
-        let top_groups = rows
-            .iter()
-            .take(5)
-            .map(|r| PromptGroup {
-                name: r.name.clone(),
-                kind: if r.kind == RowKind::App { "app" } else { "dev project" },
-                footprint: r.footprint,
-            })
-            .collect();
-        let input = PromptInput {
-            start_ts: from,
-            end_ts: now,
-            db_path: self.db_path.to_string_lossy().into_owned(),
-            total_bytes: s.total,
-            used_bytes: s.used,
-            pressure: s.pressure,
-            since_ts: s.since,
-            cpu_pct: s.cpu_pct as f32,
-            top_groups,
-            worktree_paths: self.worktrees_in(from),
-        };
-        prompt::build(&input)
-    }
-
-    /// Folders of the dev projects that weighed the most since `from`
-    /// (docker stacks count for their worktree), biggest first, at most 8.
-    fn worktrees_in(&mut self, from: i64) -> Vec<String> {
-        let mut sums: HashMap<Gid, u64> = HashMap::new();
-        let rows = self.store.as_ref().and_then(|s| s.group_minutes(from, i64::MAX).ok()).unwrap_or_default();
-        for g in &rows {
-            let root = self.reg.parent_of(g.gid).unwrap_or(g.gid);
-            *sums.entry(root).or_default() += g.mib_avg as u64;
-        }
-        // Projects live right now count too (the last minutes may be tiny).
-        for r in &self.snap.dev {
-            *sums.entry(r.gid).or_default() += r.footprint / MIB;
-        }
-        let mut list: Vec<(u64, &str)> = sums
-            .iter()
-            .filter_map(|(gid, &sum)| {
-                let g = self.reg.get(*gid)?;
-                (g.kind == GroupKind::Worktree && g.path.starts_with('/')).then_some((sum, g.path.as_str()))
-            })
-            .collect();
-        list.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(b.1)));
-        list.into_iter().take(8).map(|(_, p)| p.to_string()).collect()
+        let home = std::env::var("HOME").ok();
+        let db = prompt::home_relative(&self.db_path.to_string_lossy(), home.as_deref());
+        prompt::build(period.words(), &db)
     }
 }
 

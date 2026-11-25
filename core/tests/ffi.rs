@@ -196,6 +196,7 @@ fn c_abi_end_to_end() {
     unsafe { dl_string_free(pr) };
     let db = dir.join("devload.sqlite");
     assert!(text.contains(db.to_str().unwrap()), "{text}");
+    assert!(text.contains("over the last 6 hours."), "{text}");
     assert!(dl_prompt_get(7).is_null());
 
     // Stop: threads end quickly, the minute in progress is written.

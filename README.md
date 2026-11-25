@@ -31,7 +31,7 @@ Activity Monitor lists processes. When you run several worktrees, Claude Code or
 - **Apps (outside dev projects):** Chrome, Slack, Docker Desktop and the rest, each app's helpers grouped under it. Nothing is counted twice.
 - **Graph:** memory used over 1 h, 6 h, 24 h or 7 days. Hover to read the time and the exact values.
 - **Quit:** quit an app, or stop a dev project's processes and Docker containers, from the popover (with a confirmation).
-- **Analyze:** copies a ready-made prompt for Claude Code, Codex or any agent. It points to the local database and asks the agent what used the memory and why.
+- **Analyze:** copies a ready-made prompt for Claude Code, Codex or any agent. It points to the local database and asks the agent what looks wrong and why.
 - **Light:** one native process, no daemon, no network. See [Performance](#performance).
 
 > [!NOTE]
@@ -113,12 +113,18 @@ See [Build from source](#build-from-source). A locally built app isn't quarantin
 
 ### The Analyze button
 
-**Analyze** copies a prompt to your clipboard. devload doesn't run any agent. Paste the prompt into Claude Code, Codex or any agent that can run `sqlite3`. It contains:
+**Analyze** copies a prompt to your clipboard. devload doesn't run any agent. Paste the prompt into Claude Code, Codex or any agent that can run `sqlite3`. It's short on purpose: it gives the period shown on the graph and the path to devload's database, asks the agent to open it read-only, and to say what looks problematic and why. The agent reads the data itself.
 
-- the period shown on the graph,
-- the path to devload's database and how to read it (read-only),
-- the current state (memory, pressure, CPU, biggest consumers),
-- the folders of the worktrees involved, so the agent can read their dev-server config, watchers or `docker-compose.yml`.
+```text
+Look at what happened on my Mac over the last 6 hours.
+
+devload records its memory and CPU in a SQLite database:
+  ~/'Library/Application Support/devload/devload.sqlite'
+
+Open it read-only (sqlite3 -readonly) and start with .schema, every column is commented.
+
+Tell me what looks problematic and why. Don't change anything without asking me first.
+```
 
 Secrets are removed from process arguments before they go into the database or the prompt: `--token` style flags, URLs with credentials and well-known token formats.
 
