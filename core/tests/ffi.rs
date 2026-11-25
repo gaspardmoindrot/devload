@@ -170,11 +170,15 @@ fn c_abi_end_to_end() {
             dl_series_fill(period, 1, w as u32, std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut(), st.as_mut_ptr(), hd.as_mut_ptr(), &mut meta)
         };
         assert!(ok && hd[w - 1]);
-        assert!((1..=3).contains(&meta.top_len));
-        let names = s(meta.top_names);
-        assert_eq!(names.lines().count() as u32, meta.top_len);
-        assert!(!names.contains("System"));
-        unsafe { dl_string_free(meta.top_names) };
+        // Groups under 50 MiB are left out: a quiet machine (a CI runner) can have none.
+        assert!(meta.top_len <= 3);
+        assert_eq!(meta.top_names.is_null(), meta.top_len == 0);
+        if meta.top_len > 0 {
+            let names = s(meta.top_names);
+            assert_eq!(names.lines().count() as u32, meta.top_len);
+            assert!(!names.contains("System"));
+            unsafe { dl_string_free(meta.top_names) };
+        }
         let col: f32 = st[4 * (w - 1)..4 * w].iter().sum();
         assert!((col - hi[w - 1]).abs() <= hi[w - 1] * 0.2, "stack {col} ≈ used {}", hi[w - 1]);
     }
