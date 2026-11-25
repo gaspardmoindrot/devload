@@ -429,3 +429,44 @@ fn a_relaunch_after_a_crash_mid_episode_continues_it() {
     assert_eq!(e.ingest(T0 + 300, s).alert, None);
     assert_eq!(e.episodes.current().unwrap().start, T0);
 }
+
+#[test]
+fn quitting_a_row_targets_its_processes_and_never_system() {
+    let d = Dir::new("targets");
+    let mut e = engine(&d.0);
+    e.ingest(T0, scan(T0, 12, Pressure::Normal, &busy()));
+    // busy(): worktrees are pids 100..108, apps 108..115, System 115.
+    let app0 = e.snapshot().apps[0].gid;
+    let t = e.quit_targets(app0).unwrap();
+    assert_eq!(t.procs, [crate::quit::Proc { pid: 108, start_abs: 108 }]);
+    assert!(t.containers.is_empty());
+    let feat0 = e.snapshot().dev[0].gid;
+    assert_eq!(e.quit_targets(feat0).unwrap().procs[0].pid, 100);
+    // System has no row, but its id is a real gid: it must not be quittable.
+    let system = e.reg.of_owner(&Owner::System, e.col.repos());
+    assert_eq!(e.quit_targets(system), None);
+    assert_eq!(e.quit_targets(Gid::MAX), None);
+}
+
+#[test]
+fn a_failed_flush_loses_no_minute_and_no_group() {
+    let d = Dir::new("flush-fail");
+    let mut e = engine(&d.0);
+    // A second connection makes every minute write fail, as a full disk would.
+    let db = rusqlite::Connection::open(d.0.join("devload.sqlite")).unwrap();
+    db.execute_batch("CREATE TRIGGER boom BEFORE INSERT ON machine_minute BEGIN SELECT RAISE(ABORT, 'boom'); END;").unwrap();
+    run(&mut e, T0, T0 + 65, 10, Pressure::Normal);
+    assert!(!e.flush_now(T0 + 65, false));
+    assert_eq!(e.pending.len(), 1, "kept for the next flush");
+    db.execute_batch("DROP TRIGGER boom;").unwrap();
+    assert!(e.flush_now(T0 + 70, false));
+    assert!(e.pending.is_empty());
+    let st = Store::open(&d.0).unwrap();
+    assert_eq!(st.machine_minutes(0, i64::MAX).unwrap().len(), 1);
+    let ids: Vec<Gid> = st.groups().unwrap().into_iter().map(|g| g.id).collect();
+    let rows = st.group_minutes(0, i64::MAX).unwrap();
+    assert!(!rows.is_empty());
+    for g in &rows {
+        assert!(ids.contains(&g.gid), "group_minute of {} has no groups row", g.gid);
+    }
+}
