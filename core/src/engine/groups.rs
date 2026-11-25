@@ -184,4 +184,22 @@ mod tests {
         let mut r2 = Registry::new("/Users/me", groups);
         assert_eq!(r2.of_owner(&Owner::App("/x/host-3/app.noindex/Helper Agents.app".into()), &mut repos), a);
     }
+
+    #[test]
+    fn a_purged_app_frees_its_name() {
+        let mut r = Registry::new("/Users/me", vec![]);
+        let mut repos = RepoIndex::with_fs("/Users/me".into(), Box::new(FakeFs::default()));
+        let old = r.of_owner(&Owner::App("/Volumes/Installer/Editor.app".into()), &mut repos);
+        r.take_dirty();
+        // Seen in the last hour: kept, and written again.
+        r.purged(&[old]);
+        assert_eq!(r.take_dirty().iter().map(|g| g.id).collect::<Vec<_>>(), [old]);
+        // Not seen since: forgotten, so the copy in /Applications isn't
+        // merged into a row the database no longer has.
+        r.purged(&[old]);
+        let new = r.of_owner(&Owner::App("/Applications/Editor.app".into()), &mut repos);
+        assert_ne!(new, old);
+        assert_eq!(r.get(new).unwrap().path, "/Applications/Editor.app");
+        assert_eq!(r.get(old), None);
+    }
 }
