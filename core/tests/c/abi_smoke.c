@@ -46,7 +46,11 @@ int main(int argc, char **argv) {
     CHECK(dl_series_fill(0, 0, W, lo, hi, level, NULL, NULL, &m));
     CHECK(m.to - m.from == 3600 && level[W - 1] <= 2);
     CHECK(dl_series_fill(0, 1, W, NULL, NULL, NULL, stack, has, &m));
-    CHECK(has[W - 1] && m.top_len >= 1 && m.top_names);
+    // Groups under 50 MiB are left out, so a quiet machine (a CI runner) can
+    // have none: check the contract, not the machine.
+    CHECK((m.top_len == 0) == (m.top_names == NULL));
+    if (m.top_len >= 1) CHECK(has[W - 1]);
+    printf("groups graph: %u groups\n", m.top_len);
     dl_string_free(m.top_names);
 
     char *p = dl_prompt_get(0);

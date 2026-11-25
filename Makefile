@@ -12,6 +12,10 @@ LIBDIR   := $(ROOT)/core/target/release
 APP      := build/Devload.app
 DEV_DATA ?= $(ROOT)/build/dev-data
 
+# The app's minimum macOS. Exported so the C code cargo builds (bundled
+# SQLite) targets it too: core/.cargo/config.toml only applies from core/.
+export MACOSX_DEPLOYMENT_TARGET := 26.0
+
 .PHONY: all core header abi-test swift app test snapshots run clean
 all: app
 
