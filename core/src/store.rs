@@ -1106,4 +1106,31 @@ mod tests {
         assert_eq!(texts, vec!["node", "old run"]);
         assert_eq!(s.string_count(), 2);
     }
+
+    #[test]
+    fn a_database_from_another_version_is_refused_and_left_alone() {
+        let d = TmpDir::new("version");
+        let mut s = Store::open(&d.0).unwrap();
+        s.flush(T0 + 60, &[], &[minute(T0, 8000)], &[]).unwrap();
+        s.conn.execute("UPDATE meta SET value = 99 WHERE key = 'schema_version'", []).unwrap();
+        drop(s);
+        let e = Store::open(&d.0).err().unwrap();
+        assert!(e.to_string().contains("schema_version Some(99)"), "{e}");
+        // Not migrated, not wiped: a newer build can still read it.
+        let raw = Connection::open(d.0.join("devload.sqlite")).unwrap();
+        let n: i64 = raw.query_row("SELECT count(*) FROM machine_minute", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 1);
+        raw.execute("DELETE FROM meta WHERE key = 'schema_version'", []).unwrap();
+        drop(raw);
+        assert!(Store::open(&d.0).err().unwrap().to_string().contains("schema_version None"));
+    }
+
+    #[test]
+    fn an_unknown_group_kind_is_an_error_not_a_guess() {
+        let d = TmpDir::new("kind");
+        let mut s = Store::open(&d.0).unwrap();
+        s.flush(T0, &[group(1, GroupKind::Worktree, "wt", None)], &[], &[]).unwrap();
+        s.conn.execute("UPDATE groups SET kind = 'robot' WHERE id = 1", []).unwrap();
+        assert!(s.groups().err().unwrap().to_string().contains("unknown group kind \"robot\""));
+    }
 }
