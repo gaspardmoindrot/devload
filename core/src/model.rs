@@ -178,3 +178,29 @@ pub const MIB: u64 = 1 << 20;
 pub fn to_mib(bytes: u64) -> u32 {
     ((bytes + MIB / 2) / MIB).min(u32::MAX as u64) as u32
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn group_kinds_round_trip_through_their_database_names() {
+        for k in [GroupKind::Worktree, GroupKind::App, GroupKind::Docker, GroupKind::System] {
+            assert_eq!(GroupKind::parse(k.as_str()), Some(k));
+        }
+        assert_eq!(GroupKind::parse("App"), None);
+    }
+
+    #[test]
+    fn pressure_from_a_byte_never_fails() {
+        assert_eq!([0, 1, 2].map(Pressure::from_u8), [Pressure::Normal, Pressure::Tight, Pressure::Critical]);
+        // A value from a newer build reads as Normal rather than panicking.
+        assert_eq!(Pressure::from_u8(7), Pressure::Normal);
+    }
+
+    #[test]
+    fn to_mib_rounds_and_saturates() {
+        assert_eq!([0, MIB / 2 - 1, MIB / 2, 3 * MIB].map(to_mib), [0, 0, 1, 3]);
+        assert_eq!(to_mib(u64::MAX / 2), u32::MAX);
+    }
+}
