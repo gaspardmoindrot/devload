@@ -35,6 +35,14 @@ func liveCoreEndToEnd() async throws {
     #expect(zip(s.apps, s.apps.dropFirst()).allSatisfy { $0.footprint >= $1.footprint })
     #expect(s.since <= s.time)
 
+    // What a row is made of. A tick may have dropped the row meanwhile.
+    if let app = s.apps.first, let p = core.parts(row: app.id) {
+        #expect(p.processes >= 1 && p.containers == 0)
+        #expect(p.parts.allSatisfy { !$0.label.isEmpty && $0.count >= 1 })
+    }
+    #expect(core.parts(row: .max) == nil)
+    #expect(!core.quit(row: .max), "no such row: nothing is signalled")
+
     core.setPopoverOpen(true)
     for period in Period.allCases {
         let p = try #require(core.series(period: period, mode: .pressure, width: 300))
@@ -45,7 +53,8 @@ func liveCoreEndToEnd() async throws {
 
         let g = try #require(core.series(period: period, mode: .groups, width: 300))
         #expect(g.width == 300 && g.stack.count == 1200 && g.hasData[299])
-        #expect((1...3).contains(g.top.count) && !g.top.contains("System"))
+        // No group may reach the 50 MiB a name needs on a bare CI runner.
+        #expect(g.top.count <= 3 && !g.top.contains("System"))
     }
     #expect(core.series(period: .h1, mode: .pressure, width: 0) == nil)
     core.setPopoverOpen(false)
