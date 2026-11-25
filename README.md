@@ -1,3 +1,7 @@
+<p align="center">
+  <img alt="" src="docs/images/logo.svg" width="128" height="128">
+</p>
+
 <h1 align="center">devload</h1>
 
 <p align="center">
@@ -53,17 +57,33 @@ Activity Monitor lists processes. When you run several worktrees, Claude Code or
 
 ### Download a release
 
-1. Download `Devload-<version>.zip` from the [latest release](https://github.com/gaspardmoindrot/devload/releases/latest).
-2. Unzip it and move `Devload.app` to `/Applications`.
-3. Remove the quarantine flag, then open the app:
+1. Download `Devload-<version>.zip` and `Devload-<version>.zip.sha256` from the [latest release](https://github.com/gaspardmoindrot/devload/releases/latest).
+2. Optional: check the zip is the one the release workflow built. In the folder where you downloaded both files:
+
+   ```sh
+   shasum -a 256 -c Devload-<version>.zip.sha256
+   ```
+
+   It should print `Devload-<version>.zip: OK`.
+3. Unzip it and move `Devload.app` to `/Applications`.
+4. Let macOS run it (see the next section for why), then open it:
 
    ```sh
    xattr -dr com.apple.quarantine /Applications/Devload.app
    open /Applications/Devload.app
    ```
 
+### Why macOS warns you, and the two ways past it
+
+devload is ad-hoc signed, **not signed with an Apple Developer ID and not notarized**. That needs the paid Apple Developer Program ($99 a year), and devload is a free side project for developers. So when you open a downloaded copy, Gatekeeper says it can't check the app for malicious software and only offers *Move to Trash* or *Done*. Nothing is wrong with the file: macOS just doesn't know who signed it.
+
+Pick one:
+
+- **Terminal (fastest):** the `xattr` command in step 4 removes the "downloaded from the internet" flag, so Gatekeeper doesn't check the app. Each new version you download needs it again.
+- **System Settings:** open the app once and click *Done* on the warning. Then go to **System Settings → Privacy & Security**, scroll down to **Security**, and click **Open Anyway** next to the line about Devload. Confirm with your password or Touch ID. macOS remembers the choice for this copy.
+
 > [!IMPORTANT]
-> The app is ad-hoc signed, **not signed with a Developer ID and not notarized** (that needs a paid Apple Developer account). macOS blocks downloaded apps like this one. The `xattr` command above removes the "downloaded from the internet" flag so macOS lets it run. You can check what you run: each release lists the SHA-256 of the zip, and the zip is built by the public [release workflow](.github/workflows/release.yml) from the tagged source. If you'd rather not trust a binary, [build it yourself](#build-from-source). It takes about two minutes.
+> Only do this for software you trust. You can check what you run: the zip is built from the tagged source by the public [release workflow](.github/workflows/release.yml), and its SHA-256 is published next to it. If you'd rather not trust a binary at all, [build it yourself](#build-from-source). It takes about two minutes, and a locally built app is never quarantined.
 
 On first launch, macOS asks whether devload may send notifications. They're only used for the pressure alerts.
 

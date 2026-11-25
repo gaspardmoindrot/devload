@@ -39,8 +39,9 @@ swift: core
 
 app: swift
 	rm -rf $(APP)
-	mkdir -p $(APP)/Contents/MacOS
+	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Resources
 	cp app/.build/release/Devload $(APP)/Contents/MacOS/Devload
+	cp app/AppIcon.icns $(APP)/Contents/Resources/AppIcon.icns
 	strip -x $(APP)/Contents/MacOS/Devload
 	cp app/Info.plist $(APP)/Contents/Info.plist
 	plutil -lint -s $(APP)/Contents/Info.plist
