@@ -5,16 +5,23 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: macos-26
+    timeout-minutes: 45
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          workspaces: core
+          persist-credentials: false
+      # No build cache here: a release is built from scratch, from the tag.
       - name: Check the version
         run: |
           plist=$(plutil -extract CFBundleShortVersionString raw app/Info.plist)
@@ -29,9 +36,31 @@ jobs:
           ditto -c -k --keepParent Devload.app "Devload-$GITHUB_REF_NAME.zip"
           shasum -a 256 "Devload-$GITHUB_REF_NAME.zip" > "Devload-$GITHUB_REF_NAME.zip.sha256"
           cat "Devload-$GITHUB_REF_NAME.zip.sha256"
+      - name: Check the zip users download
+        run: |
+          cd build
+          shasum -a 256 -c "Devload-$GITHUB_REF_NAME.zip.sha256"
+          rm -rf unzipped && mkdir unzipped
+          ditto -x -k "Devload-$GITHUB_REF_NAME.zip" unzipped
+          ../scripts/check-app.sh unzipped/Devload.app
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cat > notes.md <<EOF
+          ## Install
+
+          macOS 26 or later, Apple Silicon. devload is ad-hoc signed, not notarized (no paid Apple Developer account), so macOS blocks the downloaded app until you allow it:
+
+          \`\`\`sh
+          shasum -a 256 -c Devload-$GITHUB_REF_NAME.zip.sha256   # optional: check the download
+          # unzip, move Devload.app to /Applications, then:
+          xattr -dr com.apple.quarantine /Applications/Devload.app
+          open /Applications/Devload.app
+          \`\`\`
+
+          Or open it once, then click **Open Anyway** in System Settings → Privacy & Security. Details in the [README](https://github.com/$GITHUB_REPOSITORY#install).
+
+          EOF
           gh release create "$GITHUB_REF_NAME" build/Devload-*.zip build/Devload-*.zip.sha256 \
-            --title "devload $GITHUB_REF_NAME" --generate-notes
+            --title "devload $GITHUB_REF_NAME" --notes-file notes.md --generate-notes
