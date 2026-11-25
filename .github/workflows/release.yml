@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+      - name: Check the version
+        run: |
+          plist=$(plutil -extract CFBundleShortVersionString raw app/Info.plist)
+          test "v$plist" = "$GITHUB_REF_NAME" || { echo "Info.plist says $plist, tag is $GITHUB_REF_NAME"; exit 1; }
+      - name: Test
+        run: make test
+      - name: Build
+        run: make app
+      - name: Package
+        run: |
+          cd build
+          ditto -c -k --keepParent Devload.app "Devload-$GITHUB_REF_NAME.zip"
+          shasum -a 256 "Devload-$GITHUB_REF_NAME.zip" > "Devload-$GITHUB_REF_NAME.zip.sha256"
+          cat "Devload-$GITHUB_REF_NAME.zip.sha256"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/Devload-*.zip build/Devload-*.zip.sha256 \
+            --title "devload $GITHUB_REF_NAME" --generate-notes

@@ -1,0 +1,3 @@
+[env]
+# Same minimum as Devload.app: C dependencies (bundled SQLite) target it too.
+MACOSX_DEPLOYMENT_TARGET = "26.0"

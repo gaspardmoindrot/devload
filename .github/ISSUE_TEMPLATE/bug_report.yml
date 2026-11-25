@@ -1,0 +1,49 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: checkboxes
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues
+          required: true
+        - label: I'm on the latest release (or on `main`, built from source)
+          required: true
+  - type: textarea
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+  - type: input
+    attributes:
+      label: devload version
+      placeholder: "2.0.0"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: macOS version and Mac model
+      placeholder: "macOS 26.1, MacBook Pro M3, 24 GB"
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: How did you install it?
+      options:
+        - Release zip
+        - Built from source
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Screenshots or logs
+      description: |
+        Crop project names and paths you don't want to share. For logs, quit devload, run `open -n --stderr ~/devload.log /Applications/Devload.app` and paste the file. Crash reports are in Console.app → Crash Reports.

@@ -1,0 +1,14 @@
+name: Feature request
+description: An idea for devload
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes:
+      label: The problem
+      description: What were you trying to find out or do, and why couldn't you?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What you'd like
+      description: How devload could help. Mockups welcome.

@@ -1,0 +1,5 @@
+module CDevloadCore {
+    header "../../../core/include/devload.h"
+    link "devload_core"
+    export *
+}

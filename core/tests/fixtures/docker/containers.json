@@ -1,0 +1,199 @@
+[
+ {
+  "Id": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+  "Names": [
+   "/shop-postgres-1"
+  ],
+  "Image": "postgres:18-alpine",
+  "ImageID": "sha256:abababababababababababababababababababababababababababababababab",
+  "Command": "docker-entrypoint.sh",
+  "Created": 1795530555,
+  "Ports": [],
+  "Labels": {
+   "com.docker.compose.config-hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "com.docker.compose.container-number": "1",
+   "com.docker.compose.oneoff": "False",
+   "com.docker.compose.project": "shop",
+   "com.docker.compose.project.config_files": "/Users/dev/code/shop/docker-compose.yml",
+   "com.docker.compose.project.working_dir": "/Users/dev/code/shop",
+   "com.docker.compose.service": "postgres",
+   "com.docker.compose.version": "5.1.3"
+  },
+  "State": "running",
+  "Status": "Up 2 hours",
+  "HostConfig": {
+   "NetworkMode": "bridge"
+  },
+  "NetworkSettings": {
+   "Networks": {
+    "bridge": {
+     "IPAddress": "172.17.0.2"
+    }
+   }
+  },
+  "Mounts": []
+ },
+ {
+  "Id": "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+  "Names": [
+   "/shop-redis-1"
+  ],
+  "Image": "redis:7",
+  "ImageID": "sha256:abababababababababababababababababababababababababababababababab",
+  "Command": "docker-entrypoint.sh",
+  "Created": 1795530555,
+  "Ports": [],
+  "Labels": {
+   "com.docker.compose.config-hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "com.docker.compose.container-number": "1",
+   "com.docker.compose.oneoff": "False",
+   "com.docker.compose.project": "shop",
+   "com.docker.compose.project.config_files": "/Users/dev/code/shop/docker-compose.yml",
+   "com.docker.compose.project.working_dir": "/Users/dev/code/shop",
+   "com.docker.compose.service": "redis",
+   "com.docker.compose.version": "5.1.3"
+  },
+  "State": "running",
+  "Status": "Up 2 hours",
+  "HostConfig": {
+   "NetworkMode": "bridge"
+  },
+  "NetworkSettings": {
+   "Networks": {
+    "bridge": {
+     "IPAddress": "172.17.0.2"
+    }
+   }
+  },
+  "Mounts": []
+ },
+ {
+  "Id": "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+  "Names": [
+   "/blog-web-1"
+  ],
+  "Image": "node:22",
+  "ImageID": "sha256:abababababababababababababababababababababababababababababababab",
+  "Command": "docker-entrypoint.sh",
+  "Created": 1795530555,
+  "Ports": [],
+  "Labels": {
+   "com.docker.compose.config-hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "com.docker.compose.container-number": "1",
+   "com.docker.compose.oneoff": "False",
+   "com.docker.compose.project": "blog",
+   "com.docker.compose.project.config_files": "/Users/dev/code/blog/docker/docker-compose.yml",
+   "com.docker.compose.project.working_dir": "/Users/dev/code/blog/docker",
+   "com.docker.compose.service": "web",
+   "com.docker.compose.version": "5.1.3"
+  },
+  "State": "running",
+  "Status": "Up 2 hours",
+  "HostConfig": {
+   "NetworkMode": "bridge"
+  },
+  "NetworkSettings": {
+   "Networks": {
+    "bridge": {
+     "IPAddress": "172.17.0.2"
+    }
+   }
+  },
+  "Mounts": []
+ },
+ {
+  "Id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+  "Names": [
+   "/blog-web-2"
+  ],
+  "Image": "node:22",
+  "ImageID": "sha256:abababababababababababababababababababababababababababababababab",
+  "Command": "docker-entrypoint.sh",
+  "Created": 1795530555,
+  "Ports": [],
+  "Labels": {
+   "com.docker.compose.config-hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "com.docker.compose.container-number": "2",
+   "com.docker.compose.oneoff": "False",
+   "com.docker.compose.project": "blog",
+   "com.docker.compose.project.config_files": "/Users/dev/code/blog/docker/docker-compose.yml",
+   "com.docker.compose.project.working_dir": "/Users/dev/code/blog/docker",
+   "com.docker.compose.service": "web",
+   "com.docker.compose.version": "5.1.3"
+  },
+  "State": "running",
+  "Status": "Up 2 hours",
+  "HostConfig": {
+   "NetworkMode": "bridge"
+  },
+  "NetworkSettings": {
+   "Networks": {
+    "bridge": {
+     "IPAddress": "172.17.0.2"
+    }
+   }
+  },
+  "Mounts": []
+ },
+ {
+  "Id": "c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
+  "Names": [
+   "/scratch-nginx"
+  ],
+  "Image": "nginx:latest",
+  "ImageID": "sha256:abababababababababababababababababababababababababababababababab",
+  "Command": "docker-entrypoint.sh",
+  "Created": 1795530555,
+  "Ports": [],
+  "Labels": {
+   "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>"
+  },
+  "State": "running",
+  "Status": "Up 2 hours",
+  "HostConfig": {
+   "NetworkMode": "bridge"
+  },
+  "NetworkSettings": {
+   "Networks": {
+    "bridge": {
+     "IPAddress": "172.17.0.2"
+    }
+   }
+  },
+  "Mounts": []
+ },
+ {
+  "Id": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+  "Names": [
+   "/shop-postgres-1-wt2"
+  ],
+  "Image": "postgres:18-alpine",
+  "ImageID": "sha256:abababababababababababababababababababababababababababababababab",
+  "Command": "docker-entrypoint.sh",
+  "Created": 1795530555,
+  "Ports": [],
+  "Labels": {
+   "com.docker.compose.config-hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "com.docker.compose.container-number": "1",
+   "com.docker.compose.oneoff": "False",
+   "com.docker.compose.project": "shop",
+   "com.docker.compose.project.config_files": "/Users/dev/code/shop-wt2/docker-compose.yml",
+   "com.docker.compose.project.working_dir": "/Users/dev/code/shop-wt2",
+   "com.docker.compose.service": "postgres",
+   "com.docker.compose.version": "5.1.3"
+  },
+  "State": "running",
+  "Status": "Up 2 hours",
+  "HostConfig": {
+   "NetworkMode": "bridge"
+  },
+  "NetworkSettings": {
+   "Networks": {
+    "bridge": {
+     "IPAddress": "172.17.0.2"
+    }
+   }
+  },
+  "Mounts": []
+ }
+]
