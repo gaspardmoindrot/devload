@@ -382,6 +382,36 @@ fn error_body_on_the_list_is_none() {
 }
 
 #[test]
+fn a_listed_id_that_could_escape_the_path_is_never_requested() {
+    let p = sock_path("unsafe");
+    let seen = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let log = seen.clone();
+    serve(
+        &p,
+        Arc::new(move |method: &str, path: &str| {
+            log.lock().unwrap().push(path.to_string());
+            if path == "/v1.41/containers/json" {
+                return Reply::Ok(br#"[{"Id":"../../images/x","Names":["/evil"]},{"Id":"a1b2","Names":["/web"]}]"#);
+            }
+            fixture_daemon(method, path)
+        }),
+    );
+    let stacks = Docker::new(Some(p.clone())).scan().unwrap();
+    assert_eq!(stacks.len(), 1);
+    assert_eq!(*seen.lock().unwrap(), ["/v1.41/containers/json", "/v1.41/containers/a1b2/stats?stream=false&one-shot=true"]);
+    let _ = std::fs::remove_file(&p);
+}
+
+#[test]
+fn a_daemon_that_stops_answering_mid_scan_is_none() {
+    let p = sock_path("midhang");
+    serve(&p, Arc::new(|_: &str, path: &str| if path == "/v1.41/containers/json" { Reply::Ok(LIST) } else { Reply::Hang }));
+    // A partial scan would show stacks as smaller than they are.
+    assert_eq!(Docker::new(Some(p.clone())).scan(), None);
+    let _ = std::fs::remove_file(&p);
+}
+
+#[test]
 fn stop_counts_stopped_already_stopped_and_gone_as_down() {
     assert!(is_down(204) && is_down(304) && is_down(404));
     assert!(!is_down(200) && !is_down(409) && !is_down(500));
