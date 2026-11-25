@@ -117,24 +117,27 @@ public enum Format {
     public static func ticks(from: Date, to: Date, period: Period, calendar: Calendar = .current) -> [Tick] {
         let span = to.timeIntervalSince(from)
         guard span > 0 else { return [] }
-        let step: DateComponents = switch period {
-        case .h1: DateComponents(minute: 15)
-        case .h6: DateComponents(hour: 2)
-        case .h24: DateComponents(hour: 6)
-        case .d7: DateComponents(day: 1)
+        let step = switch period {
+        case .h1: 15
+        case .h6: 120
+        case .h24: 360
+        case .d7: 1440
         }
         var out: [Tick] = []
-        // The first round time after `from`: walk from the day's midnight.
-        var t = calendar.startOfDay(for: from)
-        while t <= to {
-            if t > from {
+        // Day by day, each mark set on the clock: adding hours to midnight
+        // would put them on 07:00, 13:00… on the day the clocks change.
+        var day = calendar.startOfDay(for: from)
+        while day <= to {
+            for m in stride(from: 0, to: 1440, by: step) {
+                // A time the clocks skip (02:00 in spring) has no mark.
+                guard let t = calendar.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: day),
+                      calendar.component(.hour, from: t) == m / 60, t > from, t <= to else { continue }
                 let at = t.timeIntervalSince(from) / span
-                let midnight = calendar.component(.hour, from: t) == 0 && calendar.component(.minute, from: t) == 0
-                let label = period == .d7 || (period == .h24 && midnight) ? stamp("EEE", t, calendar) : clock(t, calendar)
+                let label = period == .d7 || (period == .h24 && m == 0) ? stamp("EEE", t, calendar) : clock(t, calendar)
                 if at > edge && at < 1 - edge { out.append(Tick(at: at, label: label)) }
             }
-            guard let next = calendar.date(byAdding: step, to: t) else { break }
-            t = next
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
         }
         return out
     }

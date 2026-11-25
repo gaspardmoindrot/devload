@@ -57,6 +57,22 @@ private func at(_ s: String) -> Date {
     #expect(Format.ticks(from: now, to: now, period: .h1, calendar: paris).isEmpty)
 }
 
+@Test func ticksStayOnRoundHoursAcrossAClockChange() {
+    // Clocks go forward at 02:00 on 2026-03-29 and back at 03:00 on 2026-10-25.
+    func labels(_ to: String) -> [String] {
+        let end = at(to)
+        return Format.ticks(from: end.addingTimeInterval(-86_400), to: end, period: .h24, calendar: paris).map(\.label)
+    }
+    #expect(labels("2026-03-29T16:00:00+02:00") == ["18:00", "Sun", "06:00", "12:00"])
+    #expect(labels("2026-03-30T10:00:00+02:00") == ["12:00", "18:00", "Mon", "06:00"])
+    #expect(labels("2026-10-25T16:00:00+01:00") == ["Sun", "06:00", "12:00"], "18:00 is too close to the edge")
+    #expect(labels("2026-10-26T10:00:00+01:00") == ["12:00", "18:00", "Mon", "06:00"])
+    // 02:00 does not exist that night: no mark rather than a wrong one.
+    let end = at("2026-03-29T05:00:00+02:00")
+    let h6 = Format.ticks(from: end.addingTimeInterval(-6 * 3600), to: end, period: .h6, calendar: paris).map(\.label)
+    #expect(h6 == ["00:00", "04:00"])
+}
+
 @Test func collectingNote() {
     let now = at("2026-11-24T14:32:00+01:00")
     #expect(Format.collecting(since: at("2026-11-24T14:02:00+01:00"), now: now, calendar: paris) == "Collecting since 14:02")
