@@ -428,4 +428,123 @@ mod tests {
             s.cost_ns as f64 / 1e6
         );
     }
+
+    const NOW: i64 = 1_800_000_000;
+
+    fn collector() -> Collector {
+        let cfg = Config { home: "/Users/me".into(), claude_home: "/nonexistent".into(), codex_lock_dir: "/nonexistent".into() };
+        Collector::with_repos(cfg, RepoIndex::with_fs("/Users/me".into(), Box::new(repo::tests::FakeFs::default())))
+    }
+
+    /// Process `pid` of runtime `rt`, started long ago, using `cpu_pm`.
+    fn p(pid: i32, rt: usize, cpu_pm: u32) -> (ProcIn, Sample, Class) {
+        let proc_ = ProcIn { pid, ppid: 1, start_abs: pid as u64, readable: true, facts: Arc::new(Facts::default()) };
+        let class = Class { owner: classify::Owner::Worktree("/Users/me/git/shop".into()), runtime: Some(rt) };
+        (proc_, Sample { footprint: 0, cpu_pm, start_sec: 0 }, class)
+    }
+
+    fn rt(idx: usize, agent: Agent, kind: RuntimeKind, sessions: usize) -> Runtime {
+        Runtime {
+            idx,
+            agent,
+            kind,
+            owner: classify::Owner::Worktree("/Users/me/git/shop".into()),
+            sessions: (0..sessions).map(|i| format!("s{i}")).collect(),
+            reported_idle: None,
+        }
+    }
+
+    fn claude(idx: usize) -> Runtime {
+        rt(idx, Agent::Claude, RuntimeKind::Session, 1)
+    }
+
+    /// One tick: the idle flag of each runtime's sessions, one per session.
+    fn states(c: &mut Collector, now: i64, ps: &[(ProcIn, Sample, Class)], rts: &[Runtime]) -> Vec<Vec<bool>> {
+        let procs: Vec<ProcIn> = ps.iter().map(|x| x.0.clone()).collect();
+        let samples: Vec<Sample> = ps.iter().map(|x| x.1).collect();
+        let classes: Vec<Class> = ps.iter().map(|x| x.2.clone()).collect();
+        let out = c.session_states(now, &procs, &samples, &classes, rts);
+        out.iter().map(|v| v.iter().map(|s| s.idle).collect()).collect()
+    }
+
+    #[test]
+    fn a_quiet_session_is_idle_from_its_second_tick() {
+        let mut c = collector();
+        let ps = [p(10, 0, 5), p(11, 0, 4)];
+        assert_eq!(states(&mut c, NOW, &ps, &[claude(0)]), [[false]], "one sample is not a trend");
+        assert_eq!(states(&mut c, NOW + 5, &ps, &[claude(0)]), [[true]]);
+        // 1 % of a core, summed over the session's processes, is busy.
+        let mut c = collector();
+        let ps = [p(10, 0, 5), p(11, 0, 5)];
+        states(&mut c, NOW, &ps, &[claude(0)]);
+        assert_eq!(states(&mut c, NOW + 5, &ps, &[claude(0)]), [[false]]);
+    }
+
+    #[test]
+    fn a_cpu_spike_is_forgotten_after_a_minute() {
+        let mut c = collector();
+        states(&mut c, NOW, &[p(10, 0, 1000)], &[claude(0)]);
+        let quiet = [p(10, 0, 0)];
+        // The spike keeps the average over 10 per mille while it is in the 12-tick window.
+        for i in 1..IDLE_WINDOW as i64 {
+            assert_eq!(states(&mut c, NOW + 5 * i, &quiet, &[claude(0)]), [[false]], "tick {i}");
+        }
+        assert_eq!(states(&mut c, NOW + 60, &quiet, &[claude(0)]), [[true]]);
+    }
+
+    #[test]
+    fn a_child_started_under_a_minute_ago_keeps_the_session_busy() {
+        let mut c = collector();
+        let mut ps = [p(10, 0, 0), p(11, 0, 0)];
+        ps[1].1.start_sec = NOW as u64 - 30;
+        states(&mut c, NOW, &ps, &[claude(0)]);
+        assert_eq!(states(&mut c, NOW + 5, &ps, &[claude(0)]), [[false]]);
+        assert_eq!(states(&mut c, NOW + 30, &ps, &[claude(0)]), [[true]], "60 s old");
+        // The runtime's own start doesn't count: a fresh, quiet session is idle.
+        let mut c = collector();
+        let mut ps = [p(10, 0, 0)];
+        ps[0].1.start_sec = NOW as u64;
+        states(&mut c, NOW, &ps, &[claude(0)]);
+        assert_eq!(states(&mut c, NOW + 5, &ps, &[claude(0)]), [[true]]);
+    }
+
+    #[test]
+    fn claude_s_own_status_wins_over_the_measure() {
+        let mut c = collector();
+        let mut busy = claude(0);
+        busy.reported_idle = Some(false);
+        let mut idle = claude(1);
+        idle.reported_idle = Some(true);
+        let ps = [p(10, 0, 0), p(20, 1, 900)];
+        let rts = [busy, idle];
+        assert_eq!(states(&mut c, NOW, &ps, &rts), [[false], [true]]);
+        assert_eq!(states(&mut c, NOW + 5, &ps, &rts), [[false], [true]]);
+    }
+
+    #[test]
+    fn codex_counts_one_session_per_lock() {
+        let mut c = collector();
+        let ps = [p(10, 0, 0), p(20, 1, 0), p(30, 2, 0), p(40, 3, 0)];
+        let rts = [
+            rt(0, Agent::Codex, RuntimeKind::Session, 0),
+            rt(1, Agent::Codex, RuntimeKind::Session, 2),
+            rt(2, Agent::Codex, RuntimeKind::AppServer, 3),
+            // An app-server with no session open runs nothing yet.
+            rt(3, Agent::Codex, RuntimeKind::AppServer, 0),
+        ];
+        let n: Vec<usize> = states(&mut c, NOW, &ps, &rts).iter().map(Vec::len).collect();
+        assert_eq!(n, [1, 2, 3, 0]);
+    }
+
+    #[test]
+    fn a_reused_pid_starts_a_new_history() {
+        let mut c = collector();
+        states(&mut c, NOW, &[p(10, 0, 0)], &[claude(0)]);
+        assert_eq!(states(&mut c, NOW + 5, &[p(10, 0, 0)], &[claude(0)]), [[true]]);
+        // Same pid, another process: back to one sample.
+        let mut reborn = p(10, 0, 0);
+        reborn.0.start_abs = 99;
+        assert_eq!(states(&mut c, NOW + 10, &[reborn], &[claude(0)]), [[false]]);
+        assert_eq!(c.runtime_cpu.len(), 1, "the old history is dropped");
+    }
 }
