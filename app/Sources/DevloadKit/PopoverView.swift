@@ -264,6 +264,7 @@ struct RowView<Icon: View>: View {
                 .frame(width: 8)
             icon().frame(width: 16, height: 16)
             Text(row.name).font(.system(size: 13)).lineLimit(1).truncationMode(.middle).padding(.leading, 2)
+                .help(row.name)
             Spacer(minLength: 8)
             if quitting {
                 ProgressView().controlSize(.mini).accessibilityLabel("Quitting")
